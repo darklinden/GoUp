@@ -1,7 +1,9 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class square : MonoBehaviour {
+[RequireComponent (typeof (Collider2D))]
+
+public class Square : MonoBehaviour {
 
 	private Vector3 offset;
 

@@ -18,13 +18,12 @@ public class Game : MonoBehaviour {
 	public float ballSize = 1f;
 	public float floorDistance = 4f;
 	public float gameoverDistance = 30f;
-	public float floorOffsetMin = 0.125f;
-	public float floorOffsetMax = 0.375f;
+	public float floorOffsetMin = -0.4f;
+	public float floorOffsetMax = 0.4f;
+	public float borderOffset = 0.4f;
 	public float floorWidthScale = 0.6f;
 	public int floorRangeLimitMin = 10;
 	public int floorRangeLimitMax = 60;
-
-	public float ballPower = 100f;
 
 	public bool gameOver = false;
 
@@ -35,15 +34,11 @@ public class Game : MonoBehaviour {
 	public Text scoreRecordHeight;
 	public Text statusRecordHeight;
 	public Image gameoverPanel;
-
-	public Button btnLeft;
-	public Button btnRight;
-	public Button btnJump;
-	public Text btnShowHide;
+	
 	public GameObject fireworks;
 
 	public int floorCount = 0;
-	public int jumpCount = 10;
+	public int jumpCount = 3;
 	public float maxHeight = 0;
 
 	public float jumpEndHeight = 0;
@@ -51,14 +46,8 @@ public class Game : MonoBehaviour {
 	//private
 	private GameObject borderLeft, borderRight;
 	public List<GameObject> floorsPool; // reuse pool
-	private GameObject ball;
 
-	Vector3 leftEuler () {
-
-		return new Vector3 (0, 0, -Random.Range(floorRangeLimitMin, floorRangeLimitMax));
-	}
-
-	Vector3 rightEuler () {
+	Vector3 floorEuler () {
 		return new Vector3 (0, 0, Random.Range(floorRangeLimitMin, floorRangeLimitMax));
 	}
 
@@ -94,10 +83,10 @@ public class Game : MonoBehaviour {
 		borderLeft.transform.localScale = borderScale;
 		borderRight.transform.localScale = borderScale;
 		
-		borderLeft.transform.position = new Vector3 (Camera.main.transform.position.x - (cameraSize.x * 0.4f), 
+		borderLeft.transform.position = new Vector3 (Camera.main.transform.position.x - (cameraSize.x * borderOffset), 
 		                                             Camera.main.transform.position.y,
 		                                             0f);
-		borderRight.transform.position = new Vector3 (Camera.main.transform.position.x + (cameraSize.x * 0.4f), 
+		borderRight.transform.position = new Vector3 (Camera.main.transform.position.x + (cameraSize.x * borderOffset), 
 		                                              Camera.main.transform.position.y,
 		                                              0f);
 		
@@ -112,29 +101,13 @@ public class Game : MonoBehaviour {
 			t.transform.localScale = floorScale;
 
 			t.name = "" + i;
-
-//			Debug.Log(i + "-" + (Camera.main.transform.position.y + ((i - Mathf.FloorToInt(floorsCount / 2)) * floorDistance)));
-
-			if (i % 2 == 0) {
-				t.transform.position = new Vector3 (Camera.main.transform.position.x - (Random.Range(floorOffsetMin, floorOffsetMax) * cameraSize.x),
-				                                    Camera.main.transform.position.y + ((i - Mathf.FloorToInt(floorsCount / 2)) * floorDistance),
-				                                    0);
-				t.transform.rotation = Quaternion.Euler (leftEuler());
-			}
-			else {
 				t.transform.position = new Vector3 (Camera.main.transform.position.x + (Random.Range(floorOffsetMin, floorOffsetMax) * cameraSize.x),
 				                                    Camera.main.transform.position.y + ((i - Mathf.FloorToInt(floorsCount / 2)) * floorDistance),
 				                                    0);
-				t.transform.rotation = Quaternion.Euler (rightEuler());
-			}
+				t.transform.rotation = Quaternion.Euler (floorEuler());
 			
 			floorsPool.Add(t);
 		}
-		
-		//ball
-		ball = Instantiate (circle) as GameObject;
-		SpriteRenderer bsr = ball.GetComponent<SpriteRenderer>();
-		ball.transform.localScale = new Vector3 (ballSize / bsr.sprite.bounds.size.x, ballSize / bsr.sprite.bounds.size.y, 1);
 	}
 
 	void fillLabel () {
@@ -156,21 +129,24 @@ public class Game : MonoBehaviour {
 	
 	// Use this for initialization
 	void Start () {
-		PlayerPrefs.DeleteAll ();
+		PauseButton.sharedInstance.addDelegate (didPauseChanged);
 
 		setupObjects ();
 		fillLabel ();
-		ball.rigidbody2D.AddForce (new Vector2(0, ballPower));
+
+		Ball.sharedInstance.pushUp ();
+		Ball.sharedInstance.setSize (new Vector3 (ballSize, ballSize, 1));
 		statusRecordHeight.text = "" + getScore ();
+	}
+
+	void didPauseChanged (bool paused) {
+		Debug.Log ("paused: " + paused);
 	}
 
 	public void restart() {
 		if (gameOver) {
-			ball.transform.position = new Vector3(0, 0, 0);
-			ball.rigidbody2D.velocity = new Vector2(0, 0);
 			gameOver = false;
 			gameoverPanel.gameObject.SetActive (false);
-			ball.transform.position = new Vector3(0, 0, 0);
 			jumpCount = 10;
 			floorCount = 0;
 			maxHeight = 0;
@@ -180,23 +156,15 @@ public class Game : MonoBehaviour {
 				
 				GameObject t = floorsPool[i];
 
-				t.name = "" + i;
-				
-				if (i % 2 == 0) {
-					t.transform.position = new Vector3 (0 - (Random.Range(floorOffsetMin, floorOffsetMax) * cameraSize.x),
-					                                    0 + ((i - Mathf.FloorToInt(floorsCount / 2)) * floorDistance),
-					                                    0);
-					t.transform.rotation = Quaternion.Euler (leftEuler());
-				}
-				else {
-					t.transform.position = new Vector3 (0 + (Random.Range(floorOffsetMin, floorOffsetMax) * cameraSize.x),
-					                                    0 + ((i - Mathf.FloorToInt(floorsCount / 2)) * floorDistance),
-					                                    0);
-					t.transform.rotation = Quaternion.Euler (rightEuler());
-				}
+				t.transform.position = new Vector3 (0 + (Random.Range(floorOffsetMin, floorOffsetMax) * cameraSize.x),
+				                                    0 + ((i - Mathf.FloorToInt(floorsCount / 2)) * floorDistance),
+				                                    0);
+				t.transform.rotation = Quaternion.Euler (floorEuler());
 			}
 
-			ball.rigidbody2D.AddForce (new Vector2(0, ballPower));
+			Ball.sharedInstance.resetVelocity ();
+			Ball.sharedInstance.transform.position = new Vector3(0, 0, 0);
+			Ball.sharedInstance.pushUp ();
 			statusRecordHeight.text = "" + getScore ();
 		}
 	}
@@ -214,13 +182,13 @@ public class Game : MonoBehaviour {
 			jumpEndHeight = 0;
 		}
 		else {
-			if (ball.transform.position.y > jumpEndHeight) {
-				jumpEndHeight = ball.transform.position.y;
+			if (Ball.sharedInstance.transform.position.y > jumpEndHeight) {
+				jumpEndHeight = Ball.sharedInstance.transform.position.y;
 			}
 		}
 
-		if (jumpEndHeight - ball.transform.position.y > gameoverDistance
-		    || ball.transform.position.y < -gameoverDistance) {
+		if (jumpEndHeight - Ball.sharedInstance.transform.position.y > gameoverDistance
+		    || Ball.sharedInstance.transform.position.y < -gameoverDistance) {
 			if (!gameOver) {
 				gameOver = true;
 //				Debug.Log("game over");
@@ -239,20 +207,22 @@ public class Game : MonoBehaviour {
 		if (!gameOver) {
 			if (jumpCount > 0) {
 				if (Input.GetButtonDown ("Left")) {
-					ball.rigidbody2D.AddForce (new Vector2(-ballPower, 0));
+					Ball.sharedInstance.pushLeft ();
 					jumpCount--;
 				}
 				else if (Input.GetButtonDown ("Right")) {
-					ball.rigidbody2D.AddForce (new Vector2(ballPower, 0));
+					Ball.sharedInstance.pushRight ();
 					jumpCount--;
 				}
 				else if (Input.GetButtonDown ("Jump")) {
-					ball.rigidbody2D.AddForce (new Vector2(0, ballPower));
+					Ball.sharedInstance.pushUp ();
 					jumpCount--;
 				}
 			}
 
-			Camera.main.transform.position = new Vector3 (Camera.main.transform.position.x, ball.transform.position.y, Camera.main.transform.position.z);
+			Camera.main.transform.position = new Vector3 (Camera.main.transform.position.x, 
+			                                              Ball.sharedInstance.transform.position.y,
+			                                              Camera.main.transform.position.z);
 			borderLeft.transform.position = new Vector3 (borderLeft.transform.position.x, 
 			                                             Camera.main.transform.position.y,
 			                                             0f);
@@ -267,39 +237,22 @@ public class Game : MonoBehaviour {
 				
 //				Debug.Log("top:" + topOne.name + " bottom:" + bottomOne.name + " bottompos:" + bottomOne.transform.position.y + " newpos:" + (topOne.transform.position.y + floorDistance));
 				
-				bottomOne.transform.position = new Vector3(bottomOne.transform.position.x, topOne.transform.position.y + floorDistance, bottomOne.transform.position.z);
-				
-				int index = int.Parse(bottomOne.name);
-				if (index % 2 == 0) {
-					bottomOne.transform.rotation = Quaternion.Euler (leftEuler());
-				}
-				else {
-					bottomOne.transform.rotation = Quaternion.Euler (rightEuler());
-				}
-				
+				bottomOne.transform.position = new Vector3 (0 + (Random.Range(floorOffsetMin, floorOffsetMax) * cameraSize.x),
+				                                            topOne.transform.position.y + floorDistance,
+				                                            0);
+				bottomOne.transform.rotation = Quaternion.Euler (floorEuler());
+								
 				floorsPool.Insert(0, bottomOne);
 			}
 			else if (floorsPool[floorCheckUpStep].transform.position.y > Camera.main.transform.position.y) {
 				GameObject topOne = floorsPool[0];
 				GameObject bottomOne = floorsPool[floorsCount - 1];
 				floorsPool.Remove(topOne);
-				
-//				Debug.Log("top:" + topOne.name + " bottom:" + bottomOne.name + " toppos:" + topOne.transform.position.y + " newpos:" + (bottomOne.transform.position.y - floorDistance));
-				
-				int index = int.Parse(topOne.name);
-				if (index % 2 == 0) {
-					topOne.transform.rotation = Quaternion.Euler (leftEuler());
-					topOne.transform.position = new Vector3(0 - (Random.Range(floorOffsetMin, floorOffsetMax) * cameraSize.x),
-					                                        bottomOne.transform.position.y - floorDistance,
-					                                        topOne.transform.position.z);
-				}
-				else {
-					topOne.transform.rotation = Quaternion.Euler (rightEuler());
-					topOne.transform.position = new Vector3(0 + (Random.Range(floorOffsetMin, floorOffsetMax) * cameraSize.x),
-					                                        bottomOne.transform.position.y - floorDistance,
-					                                        topOne.transform.position.z);
-				}
-				
+
+				topOne.transform.rotation = Quaternion.Euler (floorEuler());
+				topOne.transform.position = new Vector3 (0 - (Random.Range(floorOffsetMin, floorOffsetMax) * cameraSize.x),
+			                                         bottomOne.transform.position.y - floorDistance,
+			                                         0);
 				floorsPool.Add(topOne);
 			}
 			
@@ -320,41 +273,27 @@ public class Game : MonoBehaviour {
 
 	public void PushLeft() {
 		if (jumpCount > 0) {
-			ball.rigidbody2D.AddForce (new Vector2(-ballPower, 0));
+			Ball.sharedInstance.pushLeft ();
 			jumpCount--;
 		}
 	}
 
 	public void PushRight () {
 		if (jumpCount > 0) {
-			ball.rigidbody2D.AddForce (new Vector2(ballPower, 0));
+			Ball.sharedInstance.pushRight ();
 			jumpCount--;
 		}
 	}
 
 	public void Jump () {
 		if (jumpCount > 0) {
-			ball.rigidbody2D.AddForce (new Vector2(0, ballPower));
+			Ball.sharedInstance.pushUp ();
 			jumpCount--;
 		}
 	}
 
-	public void ShowHideButton () {
-		if (btnLeft.gameObject.activeSelf) {
-			btnLeft.gameObject.SetActive(false);
-			btnRight.gameObject.SetActive(false);
-			btnJump.gameObject.SetActive(false);
-			btnShowHide.text = "Show Buttons";
-		}
-		else {
-			btnLeft.gameObject.SetActive(true);
-			btnRight.gameObject.SetActive(true);
-			btnJump.gameObject.SetActive(true);
-			btnShowHide.text = "Hide Buttons";
-		}
-	}
-	
 	IEnumerator stopFireworks () {
+
 		yield return new WaitForSeconds (2);
 
 		fireworks.SetActive (false);
